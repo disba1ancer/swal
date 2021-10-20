@@ -57,25 +57,25 @@ template <> struct enable_enum_bitwise<enum EventFlags> : std::true_type {};
 class Event : public Handle, public OwnableHandle<Event>, public EventHandle<Event>, public WaitableHandle<Event> {
 public:
 	Event() noexcept : Handle(NULL) {}
-	Event(SECURITY_ATTRIBUTES* sattrs, bool manualReset, bool initialState, tstring_view name)
-		: Handle(winapi_call(CreateEvent(sattrs, manualReset, initialState, name.data()))) {}
+	Event(SECURITY_ATTRIBUTES* sattrs, bool manualReset, bool initialState, tstring name)
+		: Handle(winapi_call(CreateEvent(sattrs, manualReset, initialState, name.c_str()))) {}
 	Event(bool manualReset, bool initialState)
-		: Event(nullptr, manualReset, initialState, tstring_view()) {}
+		: Event(nullptr, manualReset, initialState, tstring()) {}
 	Event(SECURITY_ATTRIBUTES& sattrs, bool manualReset, bool initialState)
-		: Event(&sattrs, manualReset, initialState, tstring_view()) {}
-	Event(SECURITY_ATTRIBUTES& sattrs, bool manualReset, bool initialState, tstring_view name)
-		: Event(&sattrs, manualReset, initialState, name.data()) {}
+		: Event(&sattrs, manualReset, initialState, tstring()) {}
+	Event(SECURITY_ATTRIBUTES& sattrs, bool manualReset, bool initialState, tstring name)
+		: Event(&sattrs, manualReset, initialState, name) {}
 #if _WIN32_WINNT >= 0x0600
-	Event(SECURITY_ATTRIBUTES* sattrs, tstring_view name, EventFlags flags, DWORD access)
-		: Handle(winapi_call(CreateEventEx(sattrs, name.data(), static_cast<DWORD>(flags), access))) {}
+	Event(SECURITY_ATTRIBUTES* sattrs, tstring name, EventFlags flags, DWORD access)
+		: Handle(winapi_call(CreateEventEx(sattrs, name.c_str(), static_cast<DWORD>(flags), access))) {}
 	Event(EventFlags flags, DWORD access)
-		: Event(nullptr, tstring_view(), flags, access) {}
+		: Event(nullptr, tstring(), flags, access) {}
 	Event(SECURITY_ATTRIBUTES& sattrs, EventFlags flags, DWORD access)
-		: Event(&sattrs, tstring_view(), flags, access) {}
-	Event(tstring_view name, EventFlags flags, DWORD access)
-		: Event(nullptr, name.data(), flags, access) {}
-	Event(SECURITY_ATTRIBUTES& sattrs, tstring_view name, EventFlags flags, DWORD access)
-		: Event(&sattrs, name.data(), flags, access) {}
+		: Event(&sattrs, tstring(), flags, access) {}
+	Event(tstring name, EventFlags flags, DWORD access)
+		: Event(nullptr, name, flags, access) {}
+	Event(SECURITY_ATTRIBUTES& sattrs, tstring name, EventFlags flags, DWORD access)
+		: Event(&sattrs, name, flags, access) {}
 #endif
 };
 
