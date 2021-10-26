@@ -140,7 +140,7 @@ LRESULT CALLBACK ClsWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		obj = reinterpret_cast<Cls*>(wnd.GetLongPtr(clsPtrIdx));
 	}
 	if (obj) {
-		if constexpr (mth) {
+		if constexpr (mth != nullptr) {
 			return (obj->*mth)(hWnd, message, wParam, lParam);
 		} else {
 			return (*obj)(hWnd, message, wParam, lParam);
