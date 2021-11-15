@@ -31,7 +31,7 @@ namespace swal {
 inline tstring get_error_string(DWORD error) {
 	constexpr std::size_t resultStringMaxSize = 512;
 	TCHAR wStr[resultStringMaxSize];
-	auto wSize = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK, nullptr, error, 0, wStr, resultStringMaxSize, nullptr);
+	auto wSize = FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK, nullptr, error, MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), wStr, resultStringMaxSize, nullptr);
 	return tstring(wStr, wSize);
 }
 
