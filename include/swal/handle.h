@@ -165,16 +165,16 @@ public:
 class File : public FileHandle, public OwnableHandle<File>, public WaitableHandle<File> {
 public:
 	File() noexcept : FileHandle(INVALID_HANDLE_VALUE) {}
-	File(tstring_view filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES* secattrs, CreateMode createMode, DWORD flags, HANDLE tmplt)
-		: FileHandle(winapi_call(CreateFile(filename.data(), access, static_cast<DWORD>(shareMode), secattrs, static_cast<DWORD>(createMode), flags, tmplt), CreateFile_error_check)) {}
+    File(tstring filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES* secattrs, CreateMode createMode, DWORD flags, HANDLE tmplt)
+        : FileHandle(winapi_call(CreateFile(filename.c_str(), access, static_cast<DWORD>(shareMode), secattrs, static_cast<DWORD>(createMode), flags, tmplt), CreateFile_error_check)) {}
 	File(tstring_view filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES& secattrs, CreateMode createMode, DWORD flags, const Handle& tmplt)
-		: File(filename.data(), access, shareMode, &secattrs, createMode, flags, tmplt) {}
+        : File(tstring(filename), access, shareMode, &secattrs, createMode, flags, tmplt) {}
 	File(tstring_view filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES& secattrs, CreateMode createMode, DWORD flags)
-		: File(filename.data(), access, shareMode, &secattrs, createMode, flags, NULL) {}
+        : File(tstring(filename), access, shareMode, &secattrs, createMode, flags, NULL) {}
 	File(tstring_view filename, DWORD access, ShareMode shareMode, CreateMode createMode, DWORD flags, const Handle& tmplt)
-		: File(filename.data(), access, shareMode, nullptr, createMode, flags, tmplt) {}
+        : File(tstring(filename), access, shareMode, nullptr, createMode, flags, tmplt) {}
 	File(tstring_view filename, DWORD access, ShareMode shareMode, CreateMode createMode, DWORD flags)
-		: File(filename.data(), access, shareMode, nullptr, createMode, flags, NULL) {}
+        : File(tstring(filename), access, shareMode, nullptr, createMode, flags, NULL) {}
 };
 
 struct CompletionStatusResult {
