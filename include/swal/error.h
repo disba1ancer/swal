@@ -165,6 +165,14 @@ inline DWORD CreateFile_error_check(HANDLE result) {
 	return ERROR_SUCCESS;
 }
 
+inline DWORD GetDIBits_error_check(int result) {
+	if (result == 0) throw 0;
+	if (result == ERROR_INVALID_PARAMETER) {
+		return result;
+	}
+	return ERROR_SUCCESS;
+}
+
 }
 
 #endif /* SWAL_ERROR_H */
