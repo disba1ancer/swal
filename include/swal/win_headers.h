@@ -5,9 +5,9 @@
 #warning _WIN32_WINNT is not set, set it in your build system
 #endif
 #include <sdkddkver.h>
-#define WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
 #ifndef NOMINMAX
-#define NOMINMAX
+#define NOMINMAX 1
 #endif
 #include <windows.h>
 #include <windowsx.h>
