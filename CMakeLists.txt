@@ -15,10 +15,11 @@ add_library(swal INTERFACE
     include/swal/error.h
     include/swal/gdi.h
     include/swal/handle.h
+    include/swal/menu.h
     include/swal/strconv.h
+    include/swal/win_headers.h
     include/swal/window.h
     include/swal/zero_or_resource.h
-    include/swal/win_headers.h
 )
 target_include_directories(swal INTERFACE
     include
