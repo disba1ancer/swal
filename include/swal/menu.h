@@ -45,20 +45,25 @@ template <> struct enable_enum_bitwise<enum TrackPopupFlags> : std::true_type {}
 class MenuHandle : public zero_or_resource<HMENU> {
 public:
 	MenuHandle(HMENU menu) : zero_or_resource(menu) {}
-	void TrackPopup(TrackPopupFlags flags, int x, int y, HWND hWnd) {
-		winapi_call(TrackPopupMenu(*this, UINT(flags), x, y, 0, hWnd, nullptr));
-	}
+	void TrackPopup(TrackPopupFlags flags, int x, int y, HWND hWnd)
+	{ winapi_call(TrackPopupMenu(*this, UINT(flags), x, y, 0, hWnd, nullptr)); }
+	MenuHandle GetSubMenu(int pos)
+	{ return ::GetSubMenu(*this, pos); }
+	void GetItemInfo(UINT item, BOOL byPos, MENUITEMINFO* info)
+	{ winapi_call(GetMenuItemInfo(*this, item, byPos, info)); }
+	void SetItemInfo(UINT item, BOOL byPos, MENUITEMINFO* info)
+	{ winapi_call(SetMenuItemInfo(*this, item, byPos, info)); }
 };
 
 template<typename T>
-class OwnableMenu {
+class OwnableMenuHandle {
 public:
-	OwnableMenu() = default;
-	~OwnableMenu() { DestroyMenu(static_cast<T&>(*this)); }
-	OwnableMenu(const OwnableMenu&) = delete;
-	OwnableMenu& operator=(const OwnableMenu&) = delete;
-	OwnableMenu(OwnableMenu&&) noexcept = default;
-	OwnableMenu& operator=(OwnableMenu&&) noexcept = default;
+	OwnableMenuHandle() = default;
+	~OwnableMenuHandle() { DestroyMenu(static_cast<T&>(*this)); }
+	OwnableMenuHandle(const OwnableMenuHandle&) = delete;
+	OwnableMenuHandle& operator=(const OwnableMenuHandle&) = delete;
+	OwnableMenuHandle(OwnableMenuHandle&&) noexcept = default;
+	OwnableMenuHandle& operator=(OwnableMenuHandle&&) noexcept = default;
 };
 
 class Menu : public MenuHandle {

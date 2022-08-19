@@ -16,6 +16,7 @@ add_library(swal INTERFACE
     include/swal/gdi.h
     include/swal/handle.h
     include/swal/menu.h
+    include/swal/reg.h
     include/swal/strconv.h
     include/swal/win_headers.h
     include/swal/window.h

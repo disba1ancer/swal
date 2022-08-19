@@ -15,17 +15,17 @@ namespace swal {
 template <typename Rs>
 class zero_or_resource {
 public:
-	operator Rs() const {
+	constexpr operator Rs() const {
 		return resource;
 	}
-	Rs get() const {
+	constexpr Rs get() const {
 		return resource;
 	}
 	const Rs* get_ptr() const { return &resource; }
 protected:
-	zero_or_resource(Rs res) : resource(res){}
-	zero_or_resource(const zero_or_resource&) = default;
-	zero_or_resource(zero_or_resource&& other) noexcept : resource(other.resource) {
+	constexpr zero_or_resource(Rs res) : resource(res){}
+	constexpr zero_or_resource(const zero_or_resource&) = default;
+	constexpr zero_or_resource(zero_or_resource&& other) noexcept : resource(other.resource) {
 		other.resource = 0;
 	}
 	zero_or_resource& operator=(const zero_or_resource&) = default;
