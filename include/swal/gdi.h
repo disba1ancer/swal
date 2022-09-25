@@ -58,6 +58,7 @@ public:
 	COLORREF SetPenColor(COLORREF color) const { return winapi_call(::SetDCPenColor(get(), color), invalid_color_error_check); }
 	COLORREF SetPixel(int x, int y, COLORREF color) const { return winapi_call(::SetPixel(get(), x, y, color), invalid_color_error_check); }
 	void FillRect(RECT& rc, HBRUSH brush) const { winapi_call(::FillRect(get(), &rc, brush)); }
+	int GetCaps(int index) const { return GetDeviceCaps(*this, index); }
 };
 
 class PaintDC : private PAINTSTRUCT, public DC {
