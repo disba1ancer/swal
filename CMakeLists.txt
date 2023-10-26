@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.23)
 project (swal
     LANGUAGES CXX
     VERSION 0.1
@@ -9,7 +9,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Target  swal
-add_library(swal INTERFACE
+add_library(swal INTERFACE)
+target_sources(swal PUBLIC
+FILE_SET HEADERS
+BASE_DIRS include
+FILES
     include/swal/com.h
     include/swal/enum_bitwise.h
     include/swal/error.h
@@ -22,8 +26,9 @@ add_library(swal INTERFACE
     include/swal/window.h
     include/swal/zero_or_resource.h
 )
-target_include_directories(swal INTERFACE
-    include
-)
+
+message(INFO ${CMAKE})
 
 add_library(swal::swal ALIAS swal)
+install(TARGETS swal EXPORT swal FILE_SET HEADERS)
+install(EXPORT swal NAMESPACE swal:: DESTINATION cmake FILE swal-config.cmake)
