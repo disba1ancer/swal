@@ -27,8 +27,6 @@ FILES
     include/swal/zero_or_resource.h
 )
 
-message(INFO ${CMAKE})
-
 add_library(swal::swal ALIAS swal)
 install(TARGETS swal EXPORT swal FILE_SET HEADERS)
 install(EXPORT swal NAMESPACE swal:: DESTINATION cmake FILE swal-config.cmake)
