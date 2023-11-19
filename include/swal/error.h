@@ -83,7 +83,7 @@ T winapi_call(T result) {
 }
 
 template <typename T, typename F>
-typename std::remove_reference<F>::type winapi_call(T result, DWORD(*chk)(F)) {
+auto winapi_call(T result, DWORD(*chk)(F)) -> typename std::remove_reference<F>::type {
 	DWORD err = chk(result);
 	if (err != ERROR_SUCCESS) {
 		throw std::system_error(win32_errc(err));
@@ -134,13 +134,13 @@ inline DWORD invalid_color_error_check(COLORREF result) {
 	return (result != CLR_INVALID ? ERROR_SUCCESS : GetLastError());
 }
 
-inline DWORD ReadWriteFile_error_check(DWORD& result) {
+inline DWORD OverlappedFile_error_check(DWORD& result) {
 	if (!result) {
 		result = GetLastError();
 		switch (result) {
 		case ERROR_IO_PENDING:
 		case ERROR_HANDLE_EOF:
-			return 0;
+			return ERROR_SUCCESS;
 		}
 	} else {
 		result = ERROR_SUCCESS;
