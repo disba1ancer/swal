@@ -205,6 +205,14 @@ public:
 		}
 		return result;
 	}
+    CompletionStatusResult GetQueuedCompletionStatus2(DWORD timeout) const noexcept {
+		CompletionStatusResult result;
+		result.error = ERROR_SUCCESS;
+		if (!::GetQueuedCompletionStatus(handle(), &result.bytesTransfered, &result.key, &result.ovl, timeout)) {
+			result.error = GetLastError();
+		}
+		return result;
+	}
 	void PostQueuedCompletionStatus(DWORD transfered, ULONG_PTR key, OVERLAPPED* ovl) const {
 		winapi_call(::PostQueuedCompletionStatus(handle(), transfered, key, ovl));
 	}
