@@ -112,6 +112,7 @@ public:
 
 class Window : public Wnd {
 public:
+    Window() : Wnd(NULL) {}
 	Window(DWORD exStyle, ATOM cls, tstring wndName, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param) :
 		Wnd(winapi_call(CreateWindowEx(exStyle, reinterpret_cast<LPCTSTR>(cls), wndName.c_str(), style, x, y, width, height, parent, menu, hInstance, param)))
 	{}
@@ -121,7 +122,7 @@ public:
 	Window(ATOM cls, HINSTANCE hInstance, void* param = nullptr) :
 		Window(0, cls, tstring(), WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, param)
 	{}
-	~Window() { DestroyWindow(*this); }
+    ~Window() { if (*this != NULL) { DestroyWindow(*this); } }
 	Window(Window&&) = default;
 	Window& operator=(Window&&) = default;
 	Window(const Window&) = delete;
