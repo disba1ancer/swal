@@ -92,27 +92,62 @@ private:
 		return static_cast<const T&>(*this);
 	}
 public:
-	DWORD Read(LPVOID buffer, DWORD size) const {
+    BOOL Read(LPVOID buffer, DWORD size, DWORD* bytesRead, OVERLAPPED* ovl) const
+    {
+        return winapi_call(
+            ReadFile(handle(), buffer, size, bytesRead, ovl),
+            OverlappedFile_error_check
+        );
+    }
+    DWORD Read(LPVOID buffer, DWORD size) const
+    {
 		DWORD result;
-		winapi_call(ReadFile(handle(), buffer, size, &result, nullptr));
+        Read(buffer, size, &result, nullptr);
 		return result;
 	}
-	void Read(LPVOID buffer, DWORD size, OVERLAPPED& ovl) const {
-		winapi_call(ReadFile(handle(), buffer, size, nullptr, &ovl));
+    bool Read(LPVOID buffer, DWORD size, OVERLAPPED& ovl) const
+    {
+        return Read(buffer, size, nullptr, &ovl);
 	}
-	DWORD GetOverlappedResult(OVERLAPPED& ovl, bool wait = true) const {
+    bool Read(LPVOID buffer, DWORD size, DWORD& bytesRead, OVERLAPPED& ovl) const
+    {
+        return Read(buffer, size, &bytesRead, &ovl);
+    }
+    void GetOverlappedResult(OVERLAPPED* ovl, DWORD* result, BOOL wait) const
+    {
+        winapi_call(::GetOverlappedResult(handle(), ovl, result, wait));
+    }
+    auto GetOverlappedResult(OVERLAPPED& ovl) const -> DWORD
+    {
+        DWORD result = 0;
+        GetOverlappedResult(&ovl, &result, TRUE);
+		return result;
+    }
+    void GetOverlappedResult(OVERLAPPED& ovl, DWORD& transferred, bool wait = false) const
+    {
+        GetOverlappedResult(&ovl, &transferred, wait);
+    }
+    BOOL Write(LPCVOID buffer, DWORD size, DWORD* bytesWritten, OVERLAPPED* ovl) const
+    {
+        return winapi_call(
+            WriteFile(handle(), buffer, size, bytesWritten, ovl),
+            OverlappedFile_error_check
+        );
+    }
+    DWORD Write(LPCVOID buffer, DWORD size) const
+    {
 		DWORD result;
-		winapi_call(::GetOverlappedResult(handle(), &ovl, &result, wait));
+        Write(buffer, size, &result, nullptr);
 		return result;
 	}
-	DWORD Write(LPCVOID buffer, DWORD size) const {
-		DWORD result;
-		winapi_call(WriteFile(handle(), buffer, size, &result, nullptr));
-		return result;
+    bool Write(LPCVOID buffer, DWORD size, OVERLAPPED& ovl) const
+    {
+        return Write(buffer, size, nullptr, &ovl);
 	}
-	void Write(LPCVOID buffer, DWORD size, OVERLAPPED& ovl) const {
-		winapi_call(WriteFile(handle(), buffer, size, nullptr, &ovl));
-	}
+    bool Write(LPCVOID buffer, DWORD size, DWORD& bytesWritten, OVERLAPPED& ovl) const
+    {
+        return Write(buffer, size, &bytesWritten, &ovl);
+    }
 	LARGE_INTEGER SetPointerEx(LARGE_INTEGER dist, SetPointerModes mode = SetPointerModes::Begin) const {
 		LARGE_INTEGER result;
 		winapi_call(SetFilePointerEx(handle(), dist, &result, static_cast<DWORD>(mode)));

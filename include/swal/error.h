@@ -134,18 +134,12 @@ inline DWORD invalid_color_error_check(COLORREF result) {
 	return (result != CLR_INVALID ? ERROR_SUCCESS : GetLastError());
 }
 
-inline DWORD OverlappedFile_error_check(DWORD& result) {
-	if (!result) {
-		result = GetLastError();
-		switch (result) {
-		case ERROR_IO_PENDING:
-		case ERROR_HANDLE_EOF:
-			return ERROR_SUCCESS;
-		}
-	} else {
-		result = ERROR_SUCCESS;
-	}
-	return result;
+inline DWORD OverlappedFile_error_check(BOOL& result) {
+    DWORD e;
+    if (result || (e = GetLastError()) == ERROR_IO_PENDING) {
+        return ERROR_SUCCESS;
+    }
+    return e;
 }
 
 inline DWORD CancelIoEx_error_check(BOOL result) {
