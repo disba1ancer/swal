@@ -41,7 +41,16 @@ inline constexpr COLORREF Rgb(int r, int g, int b) { return RGB(r, g, b); }
 
 class Pen : public GdiObj {
 public:
-	Pen(COLORREF color, PenStyle style = PenStyle::Solid, int width = 1) : GdiObj(winapi_call(CreatePen(static_cast<int>(style), width, color))) {}
+	Pen(int style, int width, COLORREF color) :
+		GdiObj(winapi_call(CreatePen(style, width, color))) {}
+	Pen(PenStyle style, int width, COLORREF color) :
+		Pen(static_cast<int>(style), width, color) {}
+	Pen(PenStyle style, COLORREF color) :
+		Pen(static_cast<int>(style), 1, color) {}
+	Pen(int width, COLORREF color) :
+		Pen(PenStyle::Solid, width, color) {}
+	Pen(COLORREF color) :
+		Pen(PenStyle::Solid, 1, color) {}
 };
 
 class DC : public zero_or_resource<HDC> {
@@ -49,16 +58,20 @@ public:
 	DC(HDC hdc) : zero_or_resource(hdc) {}
 	HGDIOBJ SelectObject(HGDIOBJ obj) const { return winapi_call(::SelectObject(get(), obj)); }
 	void MoveTo(int x, int y) const { winapi_call(::MoveToEx(get(), x, y, nullptr)); }
+	void MoveToEx(int x, int y, POINT* pt) const {
+		winapi_call(::MoveToEx(get(), x, y, pt));
+	}
 	POINT MoveToEx(int x, int y) const {
 		POINT pt;
-		winapi_call(::MoveToEx(get(), x, y, &pt));
+		MoveToEx(x, y, &pt);
 		return pt;
 	}
 	void LineTo(int x, int y) const { winapi_call(::LineTo(get(), x, y)); }
 	COLORREF SetPenColor(COLORREF color) const { return winapi_call(::SetDCPenColor(get(), color), invalid_color_error_check); }
 	COLORREF SetPixel(int x, int y, COLORREF color) const { return winapi_call(::SetPixel(get(), x, y, color), invalid_color_error_check); }
-	void FillRect(RECT& rc, HBRUSH brush) const { winapi_call(::FillRect(get(), &rc, brush)); }
-	int GetCaps(int index) const { return GetDeviceCaps(*this, index); }
+	void FillRect(RECT* rc, HBRUSH brush) const { winapi_call(::FillRect(get(), rc, brush)); }
+	void FillRect(RECT& rc, HBRUSH brush) const { FillRect(&rc, brush); }
+	int GetCaps(int index) const { return ::GetDeviceCaps(*this, index); }
 };
 
 class PaintDC : private PAINTSTRUCT, public DC {
@@ -70,7 +83,6 @@ public:
 	PaintDC(PaintDC&&) = default;
 	PaintDC& operator=(PaintDC&&) = default;
 	const PAINTSTRUCT* operator ->() const { return this; }
-	//static PaintDC BeginPaint(HWND hWnd) { return PaintDC(hWnd); }
 private:
 	HWND hWnd;
 };
@@ -86,15 +98,15 @@ enum class GetDCExFlags {
 	IntersectRGN = DCX_INTERSECTRGN,
 	ExcludeUpdate = DCX_EXCLUDEUPDATE,
 	IntersectUpdate = DCX_INTERSECTUPDATE,
-	LockUindowUpdate = DCX_LOCKWINDOWUPDATE
+	LockWindowUpdate = DCX_LOCKWINDOWUPDATE
 };
 
 template <> struct enable_enum_bitwise<GetDCExFlags> : std::true_type {};
 
 class WindowDC : public DC {
 public:
-	WindowDC(HWND hWnd) : DC(winapi_call(GetDC(hWnd))) {}
-	WindowDC(HWND hWnd, HRGN clip, DWORD flags) : DC(winapi_call(GetDCEx(hWnd, clip, flags))) {}
+	WindowDC(HWND hWnd) : DC(winapi_call(GetDC(hWnd))), hWnd(hWnd) {}
+	WindowDC(HWND hWnd, HRGN clip, DWORD flags) : DC(winapi_call(GetDCEx(hWnd, clip, flags))), hWnd(hWnd) {}
 	WindowDC(HWND hWnd, HRGN clip, GetDCExFlags flags) : WindowDC(hWnd, clip, DWORD(flags)) {}
 	~WindowDC() { ReleaseDC(hWnd, *this); }
 	WindowDC(const WindowDC&) = delete;

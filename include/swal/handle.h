@@ -41,6 +41,7 @@ public:
 
 template <typename T>
 class EventHandle {
+public:
 	void Set() const { winapi_call(SetEvent(static_cast<const T&>(*this))); }
 	void Reset() const { winapi_call(ResetEvent(static_cast<const T&>(*this))); }
 };
@@ -57,25 +58,25 @@ template <> struct enable_enum_bitwise<enum EventFlags> : std::true_type {};
 class Event : public Handle, public OwnableHandle<Event>, public EventHandle<Event>, public WaitableHandle<Event> {
 public:
 	Event() noexcept : Handle(NULL) {}
-	Event(SECURITY_ATTRIBUTES* sattrs, bool manualReset, bool initialState, tstring name)
-		: Handle(winapi_call(CreateEvent(sattrs, manualReset, initialState, name.c_str()))) {}
+	Event(SECURITY_ATTRIBUTES* sattrs, bool manualReset, bool initialState, LPCTSTR name)
+		: Handle(winapi_call(CreateEvent(sattrs, manualReset, initialState, name))) {}
 	Event(bool manualReset, bool initialState)
-		: Event(nullptr, manualReset, initialState, tstring()) {}
+		: Event(nullptr, manualReset, initialState, nullptr) {}
 	Event(SECURITY_ATTRIBUTES& sattrs, bool manualReset, bool initialState)
-		: Event(&sattrs, manualReset, initialState, tstring()) {}
+		: Event(&sattrs, manualReset, initialState, nullptr) {}
 	Event(SECURITY_ATTRIBUTES& sattrs, bool manualReset, bool initialState, tstring name)
-		: Event(&sattrs, manualReset, initialState, name) {}
+		: Event(&sattrs, manualReset, initialState, name.c_str()) {}
 #if _WIN32_WINNT >= 0x0600
-	Event(SECURITY_ATTRIBUTES* sattrs, tstring name, EventFlags flags, DWORD access)
-		: Handle(winapi_call(CreateEventEx(sattrs, name.c_str(), static_cast<DWORD>(flags), access))) {}
+	Event(SECURITY_ATTRIBUTES* sattrs, LPCTSTR name, DWORD flags, DWORD access)
+		: Handle(winapi_call(CreateEventEx(sattrs, name, flags, access))) {}
 	Event(EventFlags flags, DWORD access)
-		: Event(nullptr, tstring(), flags, access) {}
+		: Event(nullptr, nullptr, static_cast<DWORD>(flags), access) {}
 	Event(SECURITY_ATTRIBUTES& sattrs, EventFlags flags, DWORD access)
-		: Event(&sattrs, tstring(), flags, access) {}
+		: Event(&sattrs, nullptr, static_cast<DWORD>(flags), access) {}
 	Event(tstring name, EventFlags flags, DWORD access)
-		: Event(nullptr, name, flags, access) {}
+		: Event(nullptr, name.c_str(), static_cast<DWORD>(flags), access) {}
 	Event(SECURITY_ATTRIBUTES& sattrs, tstring name, EventFlags flags, DWORD access)
-		: Event(&sattrs, name, flags, access) {}
+		: Event(&sattrs, name.c_str(), static_cast<DWORD>(flags), access) {}
 #endif
 };
 
@@ -150,7 +151,7 @@ public:
     }
 	LARGE_INTEGER SetPointerEx(LARGE_INTEGER dist, SetPointerModes mode = SetPointerModes::Begin) const {
 		LARGE_INTEGER result;
-		winapi_call(SetFilePointerEx(handle(), dist, &result, static_cast<DWORD>(mode)));
+		SetPointerEx(dist, &result, static_cast<DWORD>(mode));
 		return result;
 	}
 	void SetEndOfFile() const {
@@ -163,8 +164,11 @@ public:
 	void CancelIoEx() const {
 		winapi_call(::CancelIoEx(handle(), nullptr), CancelIoEx_error_check);
 	}
+	void CancelIoEx(OVERLAPPED* ovl) const {
+		winapi_call(::CancelIoEx(handle(), ovl), CancelIoEx_error_check);
+	}
 	void CancelIoEx(OVERLAPPED& ovl) const {
-		winapi_call(::CancelIoEx(handle(), &ovl), CancelIoEx_error_check);
+		CancelIoEx(&ovl);
 	}
 #endif
 	LARGE_INTEGER GetSizeEx() const {
@@ -200,16 +204,16 @@ public:
 class File : public FileHandle, public OwnableHandle<File>, public WaitableHandle<File> {
 public:
 	File() noexcept : FileHandle(INVALID_HANDLE_VALUE) {}
-	File(const tstring& filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES* secattrs, CreateMode createMode, DWORD flags, HANDLE tmplt)
-        : FileHandle(winapi_call(CreateFile(filename.c_str(), access, static_cast<DWORD>(shareMode), secattrs, static_cast<DWORD>(createMode), flags, tmplt), CreateFile_error_check)) {}
-    File(const tstring& filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES& secattrs, CreateMode createMode, DWORD flags, const Handle& tmplt)
-        : File(filename, access, shareMode, &secattrs, createMode, flags, tmplt) {}
+	File(LPCTSTR filename, DWORD access, DWORD shareMode, SECURITY_ATTRIBUTES* secattrs, DWORD createMode, DWORD flags, HANDLE tmplt)
+		: FileHandle(winapi_call(CreateFile(filename, access, shareMode, secattrs, createMode, flags, tmplt), CreateFile_error_check)) {}
+	File(const tstring& filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES& secattrs, CreateMode createMode, DWORD flags, const Handle& tmplt)
+		: File(filename.c_str(), access, static_cast<DWORD>(shareMode), &secattrs, static_cast<DWORD>(createMode), flags, tmplt) {}
     File(const tstring& filename, DWORD access, ShareMode shareMode, SECURITY_ATTRIBUTES& secattrs, CreateMode createMode, DWORD flags)
-        : File(filename, access, shareMode, &secattrs, createMode, flags, NULL) {}
+        : File(filename, access, shareMode, secattrs, createMode, flags, NULL) {}
     File(const tstring& filename, DWORD access, ShareMode shareMode, CreateMode createMode, DWORD flags, const Handle& tmplt)
-        : File(filename, access, shareMode, nullptr, createMode, flags, tmplt) {}
+        : File(filename.c_str(), access, static_cast<DWORD>(shareMode), nullptr, static_cast<DWORD>(createMode), flags, tmplt) {}
     File(const tstring& filename, DWORD access, ShareMode shareMode, CreateMode createMode, DWORD flags)
-        : File(filename, access, shareMode, nullptr, createMode, flags, NULL) {}
+        : File(filename, access, shareMode, createMode, flags, NULL) {}
 };
 
 struct CompletionStatusResult {
