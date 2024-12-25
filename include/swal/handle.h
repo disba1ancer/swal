@@ -149,6 +149,9 @@ public:
     {
         return Write(buffer, size, &bytesWritten, &ovl);
     }
+    void SetPointerEx(LARGE_INTEGER dist, LARGE_INTEGER* nPtr, DWORD mode) const {
+		swal::winapi_call(::SetFilePointerEx(handle(), dist, nPtr, mode));
+	}
 	LARGE_INTEGER SetPointerEx(LARGE_INTEGER dist, SetPointerModes mode = SetPointerModes::Begin) const {
 		LARGE_INTEGER result;
 		SetPointerEx(dist, &result, static_cast<DWORD>(mode));
