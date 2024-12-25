@@ -176,6 +176,24 @@ public:
 		winapi_call(GetFileSizeEx(handle(), &result));
 		return result;
 	}
+	BOOL DeviceIoControl(
+		DWORD code, LPVOID inb, DWORD ins,
+		LPVOID outb, DWORD outs, DWORD* wr, OVERLAPPED* ovl) const
+	{
+		winapi_call(
+			::DeviceIoControl(handle(), code, inb, ins, outb, outs, wr, ovl),
+			OverlappedFile_error_check
+		);
+	}
+	void DeviceIoControl(
+		DWORD code, LPVOID inb, DWORD ins,
+		LPVOID outb, DWORD outs, DWORD& wr) const
+	{
+		winapi_call(
+			::DeviceIoControl(handle(), code, inb, ins, outb, outs, &wr, nullptr),
+			OverlappedFile_error_check
+		);
+	}
 };
 
 enum class ShareMode {
