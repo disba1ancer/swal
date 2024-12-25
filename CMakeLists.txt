@@ -20,6 +20,7 @@ FILES
     include/swal/error.h
     include/swal/gdi.h
     include/swal/handle.h
+    include/swal/hinstance.h
     include/swal/menu.h
     include/swal/reg.h
     include/swal/strconv.h
