@@ -14,6 +14,7 @@
 #include "enum_bitwise.h"
 #include "zero_or_resource.h"
 #include "gdi.h"
+#include "hinstance.h"
 
 namespace swal {
 
@@ -65,6 +66,14 @@ public:
 		SetLastError(ERROR_SUCCESS);
 		return winapi_call(SetWindowLongPtr(*this, index, value), GetWindowLongPtr_error_check);
 	}
+	LONG_PTR GetClassLongPtr(int index) const {
+		SetLastError(ERROR_SUCCESS);
+		return winapi_call(::GetClassLongPtr(*this, index), GetWindowLongPtr_error_check);
+	}
+	LONG_PTR SetClassLongPtr(int index, LONG_PTR value) const {
+		SetLastError(ERROR_SUCCESS);
+		return winapi_call(::SetClassLongPtr(*this, index, value), GetWindowLongPtr_error_check);
+	}
 	void SetPos(const Wnd& wndAfter, int x, int y, int cx, int cy, SetPosFlags flags) const {
 		winapi_call(SetWindowPos(*this, wndAfter, x, y, cx, cy, static_cast<UINT>(flags)));
 	}
@@ -113,16 +122,16 @@ public:
 class Window : public Wnd {
 public:
     Window() : Wnd(NULL) {}
-    Window(DWORD exStyle, ATOM cls, LPCTSTR wndName, DWORD style, int x, int y, int width, int height, HWND parent, HMENU menu, HINSTANCE hInstance, void* param) :
+    Window(DWORD exStyle, LPCTSTR cls, LPCTSTR wndName, DWORD style, int x, int y, int width, int height, HWND parent, HMENU menu, HINSTANCE hInstance, void* param) :
 		Wnd(winapi_call(CreateWindowEx(exStyle, reinterpret_cast<LPCTSTR>(cls), wndName, style, x, y, width, height, parent, menu, hInstance, param)))
 	{}
-	Window(DWORD exStyle, ATOM cls, const tstring& wndName, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param) :
+	Window(DWORD exStyle, LPCTSTR cls, const tstring& wndName, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param) :
 		Window(exStyle, cls, wndName.c_str(), style, x, y, width, height, HWND(parent), menu, hInstance, param)
 	{}
-	Window(DWORD exStyle, ATOM cls, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param) :
+	Window(DWORD exStyle, LPCTSTR cls, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param) :
 		Window(exStyle, cls, nullptr, style, x, y, width, height, HWND(parent), menu, hInstance, param)
 	{}
-	Window(ATOM cls, HINSTANCE hInstance, void* param = nullptr) :
+	Window(LPCTSTR cls, HINSTANCE hInstance, void* param = nullptr) :
 		Window(0, cls, nullptr, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, param)
 	{}
     ~Window() { if (*this != NULL) { DestroyWindow(*this); } }
@@ -152,6 +161,115 @@ LRESULT CALLBACK ClsWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
+
+struct WindowClass
+{
+	WindowClass(const WNDCLASSEX& wcex) :
+		className(wcex.lpszClassName)
+	{
+		winapi_call(::RegisterClassEx(&wcex));
+	}
+	WindowClass(const WNDCLASS &wc) :
+		className(wc.lpszClassName)
+	{
+		winapi_call(::RegisterClass(&wc));
+	}
+	~WindowClass() {
+		::UnregisterClass(className, GetLocalInstance());
+	}
+	auto ClassName() -> const TCHAR*
+	{
+		return className;
+	}
+	operator const TCHAR*()
+	{
+		return className;
+	}
+private:
+	const TCHAR* className;
+};
+
+template <typename T>
+struct basic_window_class : WindowClass
+{
+	basic_window_class() :
+		WindowClass(fill_class_info())
+	{}
+private:
+	auto fill_class_info() -> WNDCLASSEX
+	{
+		WNDCLASSEX wcex;
+		static_cast<T*>(this)->fill_class_info(wcex);
+		return wcex;
+	}
+};
+
+template <typename Cls, LRESULT(Cls::*mth)(HWND, UINT, WPARAM, LPARAM) = nullptr>
+struct auto_window_class : basic_window_class<auto_window_class<Cls, mth>>
+{
+	void fill_class_info(WNDCLASSEX& wcex)
+	{
+		wcex.cbSize = sizeof(WNDCLASSEX);
+		wcex.style = CS_HREDRAW | CS_VREDRAW;
+		wcex.lpfnWndProc = window_proc;
+		wcex.cbClsExtra = 0;
+		wcex.cbWndExtra = sizeof(LONG_PTR);
+		wcex.hInstance = GetLocalInstance();
+		wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+		wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
+		wcex.hbrBackground = NULL;
+		wcex.lpszMenuName = 0;
+		wcex.lpszClassName = class_name().c_str();
+		wcex.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+	}
+private:
+    static auto conv_class_name(const char* clsName) -> tstring
+    {
+        std::string_view name{clsName};
+        auto size = name.size();
+        tstring result(size, TCHAR(0));
+        for (decltype(size) i = 0; i < size; ++i) {
+            if (0 < name[i] && name[i] < 128) {
+                result[i] = name[i];
+            } else {
+                result[i] = TEXT('?');
+            }
+        }
+        return result;
+    }
+    static auto window_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) noexcept
+    -> LRESULT
+    {
+        Cls* obj;
+        Wnd wnd(hWnd);
+        if (message == WM_NCCREATE) {
+            auto cr = reinterpret_cast<CREATESTRUCT*>(lParam);
+            obj = static_cast<Cls*>(cr->lpCreateParams);
+            wnd.SetLongPtr(GwlpThis, reinterpret_cast<LONG_PTR>(obj));
+        } else {
+            obj = reinterpret_cast<Cls*>(wnd.GetLongPtr(GwlpThis));
+        }
+        if (obj) {
+            if constexpr (mth != nullptr) {
+                return (obj->*mth)(hWnd, message, wParam, lParam);
+            }
+            if constexpr (requires {{obj->window_proc(hWnd, message, wParam, lParam)} -> std::same_as<LRESULT>;}) {
+                return obj->window_proc(hWnd, message, wParam, lParam);
+            }
+        }
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    static auto class_name() ->  const tstring&
+    {
+        static const tstring className = conv_class_name(typeid(Cls).name());
+        return className;
+    }
+    enum Constants {
+        GwlpThis = 0
+    };
+
+    std::atomic_int refs = 0;
+};
 
 }
 
