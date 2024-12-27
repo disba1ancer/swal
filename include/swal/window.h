@@ -174,8 +174,27 @@ struct WindowClass
 	{
 		winapi_call(::RegisterClass(&wc));
 	}
+	WindowClass(WindowClass&& oth) :
+		className(std::exchange(oth.className, nullptr))
+	{}
+	WindowClass(const WindowClass&) = delete;
+	WindowClass& operator=(WindowClass&& oth)
+	{
+		using std::swap;
+		swap(className, oth.className);
+		return *this;
+	}
+	WindowClass& operator=(const WindowClass&) = delete;
 	~WindowClass() {
+		Unregister();
+	}
+	void Unregister() noexcept
+	{
+		if (className == nullptr) {
+			return;
+		}
 		::UnregisterClass(className, GetLocalInstance());
+		className = nullptr;
 	}
 	auto ClassName() -> const TCHAR*
 	{
