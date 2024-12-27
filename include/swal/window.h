@@ -45,7 +45,7 @@ enum class ShowCmd {
 	ShowMinimized = SW_SHOWMINIMIZED,
 	ShowMaximized = SW_SHOWMAXIMIZED,
 	Maximize = SW_MAXIMIZE,
-	NoActivate = SW_SHOWNOACTIVATE,
+	ShowNoActivate = SW_SHOWNOACTIVATE,
 	Show = SW_SHOW,
 	Minimize = SW_MINIMIZE,
 	ShowMinNoActive = SW_SHOWMINNOACTIVE,
@@ -58,6 +58,22 @@ enum class ShowCmd {
 class Wnd : public zero_or_resource<HWND> {
 public:
 	Wnd(HWND hWnd) : zero_or_resource(hWnd) {}
+	static HWND Create(DWORD exStyle, LPCTSTR cls, LPCTSTR wndName, DWORD style, int x, int y, int width, int height, HWND parent, HMENU menu, HINSTANCE hInstance, void* param)
+	{
+		return winapi_call(CreateWindowEx(exStyle, cls, wndName, style, x, y, width, height, parent, menu, hInstance, param));
+	}
+	static HWND Create(DWORD exStyle, LPCTSTR cls, const tstring& wndName, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param)
+	{
+		return Create(exStyle, cls, wndName.c_str(), style, x, y, width, height, HWND(parent), menu, hInstance, param);
+	}
+	static HWND Create(DWORD exStyle, LPCTSTR cls, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param)
+	{
+		return Create(exStyle, cls, nullptr, style, x, y, width, height, HWND(parent), menu, hInstance, param);
+	}
+	static HWND Create(LPCTSTR cls, HINSTANCE hInstance, void* param = nullptr)
+	{
+		return Create(0, cls, nullptr, WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, NULL, NULL, hInstance, param);
+	}
 	LONG_PTR GetLongPtr(int index) const {
 		SetLastError(ERROR_SUCCESS);
 		return winapi_call(GetWindowLongPtr(*this, index), GetWindowLongPtr_error_check);
@@ -121,9 +137,9 @@ public:
 
 class Window : public Wnd {
 public:
-    Window() : Wnd(NULL) {}
+    Window(HWND wnd = NULL) : Wnd(wnd) {}
     Window(DWORD exStyle, LPCTSTR cls, LPCTSTR wndName, DWORD style, int x, int y, int width, int height, HWND parent, HMENU menu, HINSTANCE hInstance, void* param) :
-		Wnd(winapi_call(CreateWindowEx(exStyle, reinterpret_cast<LPCTSTR>(cls), wndName, style, x, y, width, height, parent, menu, hInstance, param)))
+		Window(Wnd::Create(exStyle, cls, wndName, style, x, y, width, height, parent, menu, hInstance, param))
 	{}
 	Window(DWORD exStyle, LPCTSTR cls, const tstring& wndName, DWORD style, int x, int y, int width, int height, const Wnd& parent, HMENU menu, HINSTANCE hInstance, void* param) :
 		Window(exStyle, cls, wndName.c_str(), style, x, y, width, height, HWND(parent), menu, hInstance, param)
@@ -139,6 +155,10 @@ public:
 	Window& operator=(Window&&) = default;
 	Window(const Window&) = delete;
 	Window& operator=(const Window&) = delete;
+	void Detach()
+	{
+		resource = NULL;
+	}
 };
 
 template <typename Cls, LRESULT(Cls::*mth)(HWND, UINT, WPARAM, LPARAM) = nullptr, int clsPtrIdx = GWLP_USERDATA>
@@ -215,18 +235,18 @@ struct basic_window_class : WindowClass
 		WindowClass(fill_class_info())
 	{}
 private:
-	auto fill_class_info() -> WNDCLASSEX
+	static auto fill_class_info() -> WNDCLASSEX
 	{
 		WNDCLASSEX wcex;
-		static_cast<T*>(this)->fill_class_info(wcex);
+		T::fill_class_info(wcex);
 		return wcex;
 	}
 };
 
-template <typename Cls, LRESULT(Cls::*mth)(HWND, UINT, WPARAM, LPARAM) = nullptr>
-struct auto_window_class : basic_window_class<auto_window_class<Cls, mth>>
+template <typename Cls, Window(Cls::*hrcv), LRESULT(Cls::*mth)(HWND, UINT, WPARAM, LPARAM) = nullptr>
+struct auto_window_class : basic_window_class<auto_window_class<Cls, hrcv, mth>>
 {
-	void fill_class_info(WNDCLASSEX& wcex)
+	static void fill_class_info(WNDCLASSEX& wcex)
 	{
 		wcex.cbSize = sizeof(WNDCLASSEX);
 		wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -236,11 +256,37 @@ struct auto_window_class : basic_window_class<auto_window_class<Cls, mth>>
 		wcex.hInstance = GetLocalInstance();
 		wcex.hIcon = LoadIcon(NULL, IDI_APPLICATION);
 		wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-		wcex.hbrBackground = NULL;
+		wcex.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
 		wcex.lpszMenuName = 0;
 		wcex.lpszClassName = class_name().c_str();
 		wcex.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+		if constexpr (requires { Cls::fill_class_info(wcex); }) {
+			Cls::fill_class_info(wcex);
+		}
 	}
+	static auto window_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) noexcept
+    -> LRESULT
+    {
+        Cls* obj;
+        Wnd wnd(hWnd);
+        if (message == WM_NCCREATE) {
+            auto cr = reinterpret_cast<CREATESTRUCT*>(lParam);
+            obj = static_cast<Cls*>(cr->lpCreateParams);
+            (obj->*hrcv) = hWnd;
+            wnd.SetLongPtr(GwlpThis, reinterpret_cast<LONG_PTR>(obj));
+        } else {
+            obj = reinterpret_cast<Cls*>(wnd.GetLongPtr(GwlpThis));
+        }
+        if (obj) {
+            if constexpr (mth != nullptr) {
+                return (obj->*mth)(hWnd, message, wParam, lParam);
+            }
+            if constexpr (requires {{obj->window_proc(hWnd, message, wParam, lParam)} -> std::same_as<LRESULT>;}) {
+                return obj->window_proc(hWnd, message, wParam, lParam);
+            }
+        }
+        return DefWindowProc(hWnd, message, wParam, lParam);
+    }
 private:
     static auto conv_class_name(const char* clsName) -> tstring
     {
@@ -256,28 +302,6 @@ private:
         }
         return result;
     }
-    static auto window_proc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) noexcept
-    -> LRESULT
-    {
-        Cls* obj;
-        Wnd wnd(hWnd);
-        if (message == WM_NCCREATE) {
-            auto cr = reinterpret_cast<CREATESTRUCT*>(lParam);
-            obj = static_cast<Cls*>(cr->lpCreateParams);
-            wnd.SetLongPtr(GwlpThis, reinterpret_cast<LONG_PTR>(obj));
-        } else {
-            obj = reinterpret_cast<Cls*>(wnd.GetLongPtr(GwlpThis));
-        }
-        if (obj) {
-            if constexpr (mth != nullptr) {
-                return (obj->*mth)(hWnd, message, wParam, lParam);
-            }
-            if constexpr (requires {{obj->window_proc(hWnd, message, wParam, lParam)} -> std::same_as<LRESULT>;}) {
-                return obj->window_proc(hWnd, message, wParam, lParam);
-            }
-        }
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
     static auto class_name() ->  const tstring&
     {
         static const tstring className = conv_class_name(typeid(Cls).name());
@@ -286,8 +310,6 @@ private:
     enum Constants {
         GwlpThis = 0
     };
-
-    std::atomic_int refs = 0;
 };
 
 }
