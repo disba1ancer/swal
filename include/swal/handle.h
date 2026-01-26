@@ -14,6 +14,7 @@
 #include "error.h"
 #include "strconv.h"
 #include "zero_or_resource.h"
+#include "winioctl.h"
 
 namespace swal {
 
@@ -179,7 +180,7 @@ public:
 		winapi_call(GetFileSizeEx(handle(), &result));
 		return result;
 	}
-	BOOL DeviceIoControl(
+	void DeviceIoControl(
 		DWORD code, LPVOID inb, DWORD ins,
 		LPVOID outb, DWORD outs, DWORD* wr, OVERLAPPED* ovl) const
 	{
@@ -188,14 +189,13 @@ public:
 			OverlappedFile_error_check
 		);
 	}
-	void DeviceIoControl(
+	auto DeviceIoControl(
 		DWORD code, LPVOID inb, DWORD ins,
-		LPVOID outb, DWORD outs, DWORD& wr) const
+        LPVOID outb, DWORD outs) const -> DWORD
 	{
-		winapi_call(
-			::DeviceIoControl(handle(), code, inb, ins, outb, outs, &wr, nullptr),
-			OverlappedFile_error_check
-		);
+        DWORD wr;
+        DeviceIoControl(code, inb, ins, outb, outs, &wr, nullptr);
+        return wr;
 	}
 };
 
