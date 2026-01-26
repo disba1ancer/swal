@@ -6,3 +6,4 @@
 !.gitignore
 !.gitmodules
 !README.md
+!swal-config.cmake
