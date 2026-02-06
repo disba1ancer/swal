@@ -133,6 +133,14 @@ public:
 	void UpdateWindow() const {
 		winapi_call(::UpdateWindow(*this));
 	}
+    auto SendMessage(UINT message, WPARAM wParam, LPARAM lParam) const -> LRESULT
+    {
+        return ::SendMessage(*this, message, wParam, lParam);
+    }
+    void PostMessage(UINT message, WPARAM wParam, LPARAM lParam) const
+    {
+        winapi_call(::PostMessage(*this, message, wParam, lParam));
+    }
 };
 
 class Window : public Wnd {

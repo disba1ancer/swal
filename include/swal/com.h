@@ -16,6 +16,18 @@ struct com_deleter {
 	void operator ()(void* ptr) const { CoTaskMemFree(ptr); }
 };
 
+struct ComInitializer
+{
+    ComInitializer(DWORD init)
+    {
+        ::CoInitializeEx(nullptr, init);
+    }
+    ~ComInitializer()
+    {
+        ::CoUninitialize();
+    }
+};
+
 }
 
 #endif /* SWAL_COM_H */

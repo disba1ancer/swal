@@ -69,8 +69,8 @@ public:
 	void LineTo(int x, int y) const { winapi_call(::LineTo(get(), x, y)); }
 	COLORREF SetPenColor(COLORREF color) const { return winapi_call(::SetDCPenColor(get(), color), invalid_color_error_check); }
 	COLORREF SetPixel(int x, int y, COLORREF color) const { return winapi_call(::SetPixel(get(), x, y, color), invalid_color_error_check); }
-	void FillRect(RECT* rc, HBRUSH brush) const { winapi_call(::FillRect(get(), rc, brush)); }
-	void FillRect(RECT& rc, HBRUSH brush) const { FillRect(&rc, brush); }
+    void FillRect(const RECT* rc, HBRUSH brush) const { winapi_call(::FillRect(get(), rc, brush)); }
+    void FillRect(const RECT& rc, HBRUSH brush) const { FillRect(&rc, brush); }
 	int GetCaps(int index) const { return ::GetDeviceCaps(*this, index); }
 };
 
