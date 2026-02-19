@@ -141,6 +141,10 @@ public:
     {
         winapi_call(::PostMessage(*this, message, wParam, lParam));
     }
+    void SetText(LPCTSTR str)
+    {
+        winapi_call(::SetWindowText(*this, str));
+    }
 };
 
 class Window : public Wnd {
