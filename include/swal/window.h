@@ -155,12 +155,14 @@ public:
     }
     int GetTextLength()
     {
+        ::SetLastError(ERROR_SUCCESS);
         return winapi_call(::GetWindowTextLength(*this));
     }
     auto GetText() -> tstring
     {
-        tstring r(std::size_t(winapi_call(GetTextLength())), 0);
-        r.resize(std::size_t(winapi_call(GetText(r.data(), int(r.size() + 1)))));
+        auto size = std::size_t(winapi_call(GetTextLength()));
+        tstring r(size, 0);
+        r.resize(std::size_t(winapi_call(GetText(r.data(), int(size + 1)))));
         return r;
     }
 };
