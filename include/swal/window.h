@@ -145,6 +145,24 @@ public:
     {
         winapi_call(::SetWindowText(*this, str));
     }
+    void SetText(const tstring& str)
+    {
+        winapi_call(::SetWindowText(*this, str.c_str()));
+    }
+    int GetText(LPTSTR str, int len)
+    {
+        return winapi_call(::GetWindowText(*this, str, len));
+    }
+    int GetTextLength()
+    {
+        return winapi_call(::GetWindowTextLength(*this));
+    }
+    auto GetText() -> tstring
+    {
+        tstring r(std::size_t(winapi_call(GetTextLength())), 0);
+        r.resize(std::size_t(winapi_call(GetText(r.data(), int(r.size() + 1)))));
+        return r;
+    }
 };
 
 class Window : public Wnd {

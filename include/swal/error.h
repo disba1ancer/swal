@@ -75,11 +75,14 @@ inline std::error_code make_error_code(com_errc err) {
 
 template <typename T>
 T winapi_call(T result) {
-	if (!result) {
-		auto err = GetLastError();
-		throw std::system_error(win32_errc(err));
+	if (result) {
+        return result;
 	}
-	return result;
+    auto err = GetLastError();
+    if (err == ERROR_SUCCESS) {
+        return result;
+    }
+    throw std::system_error(win32_errc(err));
 }
 
 template <typename T, typename F>
